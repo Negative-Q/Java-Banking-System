@@ -1,14 +1,9 @@
 import java.awt.*;
-import java.awt.event.*;
-import java.util.*;
+import java.awt.datatransfer.StringSelection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import javax.swing.*;
-
-// Interface for Account Operations
-interface AccountOperations {
-    void deposit(double amount);
-    boolean withdraw(double amount);
-    boolean transfer(double amount, Account targetAccount);
-}
 
 // Customer Class (Encapsulation)
 class Customer {
@@ -16,112 +11,100 @@ class Customer {
     private final String name;
     private final String pin;
 
-    // Constructor to initialize customer details
     public Customer(String name, String pin) {
-        this.id = generateId(); // Generate a unique ID
+        this.id = generateId();
         this.name = name;
         this.pin = pin;
     }
 
-    // Generate a unique 9-digit ID
     private String generateId() {
         Random random = new Random();
         return String.format("%09d", random.nextInt(1_000_000_000));
     }
 
-    // Getters for private attributes
     public String getId() {
         return id;
     }
+
     public String getName() {
         return name;
     }
+
     public String getPin() {
         return pin;
     }
 }
 
 // Abstract Account Class (Inheritance)
-abstract class Account implements AccountOperations {
+abstract class Account {
     private final Customer customer;
     private double balance;
     private final List<String> transactionHistory;
-    private final double interestRate; // Interest rate for the account
+    private final double interestRate;  // Added interest rate
 
-    // Constructor to initialize account details
     public Account(Customer customer, double initialDeposit, double interestRate) {
         this.customer = customer;
         this.balance = initialDeposit;
         this.transactionHistory = new ArrayList<>();
-        this.interestRate = interestRate;
-        recordTransaction("Initial deposit of \u20B1" + initialDeposit); // Record initial deposit
+        this.interestRate = interestRate;  // Set the interest rate
+        recordTransaction("Initial deposit of ₱" + initialDeposit);
     }
 
-    // Getters for private attributes
     public Customer getCustomer() {
         return customer;
     }
+
     public double getBalance() {
         return balance;
     }
+
     public List<String> getTransactionHistory() {
         return transactionHistory;
     }
+
     public double getInterestRate() {
         return interestRate;
     }
 
-    // Calculate monthly interest based on the balance and interest rate
+    // Method to calculate the interest for the next month
     public double calculateMonthlyInterest() {
         return balance * interestRate / 100;
     }
 
-    // Deposit funds into the account
-    @Override
     public void deposit(double amount) {
         if (amount > 0) {
             balance += amount;
-            recordTransaction("Deposited \u20B1" + amount);
+            recordTransaction("Deposited ₱" + amount);
         }
     }
 
-    // Withdraw funds from the account if sufficient balance is available
-    @Override
     public boolean withdraw(double amount) {
         if (amount > 0 && amount <= balance) {
             balance -= amount;
-            recordTransaction("Withdrew \u20B1" + amount);
+            recordTransaction("Withdrew ₱" + amount);
             return true;
         }
         return false;
     }
 
-    // Transfer funds to another account
-    @Override
     public boolean transfer(double amount, Account targetAccount) {
         if (amount > 0 && amount <= balance) {
             this.withdraw(amount);
             targetAccount.deposit(amount);
-            // Record transaction details for sender and receiver
-            recordTransaction("Transferred ₱" + amount + " to " +
-                    targetAccount.getCustomer().getName() +
-                    " (ID: " + targetAccount.getCustomer().getId() + ")");
-            targetAccount.recordTransaction("Received ₱" + amount + " from " +
-                    this.getCustomer().getName() +
-                    " (ID: " + this.getCustomer().getId() + ")");
+            recordTransaction("Transferred ₱" + amount + " to Account ID: " + targetAccount.getCustomer().getId());
+            targetAccount.recordTransaction("Received ₱" + amount + " from Account ID: " + this.getCustomer().getId());
             return true;
         }
         return false;
     }
 
-    // Record transactions in the transaction history
     private void recordTransaction(String transaction) {
         transactionHistory.add(transaction);
     }
 
-    // Abstract method to define account type
     public abstract String getAccountType();
 }
+
 
 // SavingsAccount Class
 class SavingsAccount extends Account {
@@ -147,42 +130,45 @@ class CheckingAccount extends Account {
     }
 }
 
-// Main class for the Banking System application
+
 public class BankingSystem {
-    private static ArrayList<Account> accounts = new ArrayList<>(); // Store all accounts
-    private static Account currentAccount; // Store the currently logged-in account
+    private static ArrayList<Account> accounts = new ArrayList<>();
+    private static Account currentAccount;
 
     public static void main(String[] args) {
-        // Setup JFrame and main layout
+        // Main frame setup
         JFrame frame = new JFrame("Bank System");
         frame.setSize(500, 400);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        CardLayout cardLayout = new CardLayout(); // Card layout for switching between panels
+
+        // Set explicit CardLayout for frame
+        CardLayout cardLayout = new CardLayout();
         frame.setLayout(cardLayout);
 
-        // Panels for different screens
+        // Panels
         JPanel mainMenuPanel = new JPanel();
         JPanel signUpPanel = new JPanel();
         JPanel loginPanel = new JPanel();
         JPanel accountPanel = new JPanel();
         JPanel transactionPanel = new JPanel();
 
-        // Configure panel layouts
+        // Layouts
         mainMenuPanel.setLayout(new GridLayout(3, 1));
         signUpPanel.setLayout(new GridLayout(6, 2));
         loginPanel.setLayout(new GridLayout(4, 2));
         accountPanel.setLayout(new GridLayout(6, 1));
         transactionPanel.setLayout(new GridLayout(5, 1));
 
-        // Main menu buttons
+        // Main Menu Components
         JButton signUpButton = new JButton("Sign Up");
         JButton loginButton = new JButton("Log In");
         JButton exitButton = new JButton("Exit");
+
         mainMenuPanel.add(signUpButton);
         mainMenuPanel.add(loginButton);
         mainMenuPanel.add(exitButton);
 
-        // Sign-up components
+        // Sign-Up Components
         JTextField nameField = new JTextField();
         JPasswordField pinField = new JPasswordField();
         JComboBox<String> accountTypeBox = new JComboBox<>(new String[]{"Savings Account", "Checking Account"});
@@ -201,136 +187,271 @@ public class BankingSystem {
         signUpPanel.add(createAccountButton);
         signUpPanel.add(backToMainMenuButton1);
 
-        // Create account logic
-        createAccountButton.addActionListener(e -> {
-            try {
-                String name = nameField.getText();
-                String pin = new String(pinField.getPassword());
-                double initialDeposit = Double.parseDouble(depositField.getText());
-
-                if (initialDeposit < 100) {
-                    JOptionPane.showMessageDialog(frame, "Initial deposit must be at least ₱100.");
-                    return;
-                }
-
-                String accountType = (String) accountTypeBox.getSelectedItem();
-                Customer newCustomer = new Customer(name, pin);
-                Account newAccount;
-
-                if (accountType.equals("Savings Account")) {
-                    newAccount = new SavingsAccount(newCustomer, initialDeposit);
-                } else {
-                    newAccount = new CheckingAccount(newCustomer, initialDeposit);
-                }
-
-                accounts.add(newAccount);
-                JOptionPane.showMessageDialog(frame, "Account Created!");
-
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(frame, "Invalid deposit amount.");
-            }
-        });
-
-        // Back to main menu logic
-        backToMainMenuButton1.addActionListener(e -> cardLayout.show(frame.getContentPane(), "mainMenuPanel"));
-
-        // Login components
-        JTextField loginPinField = new JTextField();
+        // Login Components
+        JTextField idField = new JTextField();
+        JPasswordField loginPinField = new JPasswordField();
         JButton loginSubmitButton = new JButton("Log In");
         JButton backToMainMenuButton2 = new JButton("Back to Main Menu");
 
-        loginPanel.add(new JLabel("Enter PIN:"));
+        loginPanel.add(new JLabel("ID:"));
+        loginPanel.add(idField);
+        loginPanel.add(new JLabel("PIN:"));
         loginPanel.add(loginPinField);
         loginPanel.add(loginSubmitButton);
         loginPanel.add(backToMainMenuButton2);
 
-        // Login logic
-        loginSubmitButton.addActionListener(e -> {
-            String enteredPin = loginPinField.getText();
-            for (Account account : accounts) {
-                if (account.getCustomer().getPin().equals(enteredPin)) {
-                    currentAccount = account;
-                    JOptionPane.showMessageDialog(frame, "Login Successful!");
-                    cardLayout.show(frame.getContentPane(), "accountPanel");
-                    return;
-                }
-            }
-            JOptionPane.showMessageDialog(frame, "Incorrect PIN. Please try again.");
-        });
-
-        // Back to main menu logic for login
-        backToMainMenuButton2.addActionListener(e -> cardLayout.show(frame.getContentPane(), "mainMenuPanel"));
-
-        // Account panel components
+        // Account Panel Components
         JButton depositButton = new JButton("Deposit");
         JButton withdrawButton = new JButton("Withdraw");
         JButton transferButton = new JButton("Transfer");
+        JButton viewInfoButton = new JButton("View Info");
+        JButton viewHistoryButton = new JButton("View Transaction History");
         JButton logoutButton = new JButton("Log Out");
-        JButton viewTransactionHistoryButton = new JButton("View Transaction History");
 
-        accountPanel.add(new JLabel("Welcome, " + currentAccount.getCustomer().getName()));
         accountPanel.add(depositButton);
         accountPanel.add(withdrawButton);
         accountPanel.add(transferButton);
-        accountPanel.add(viewTransactionHistoryButton);
+        accountPanel.add(viewInfoButton);
+        accountPanel.add(viewHistoryButton);
         accountPanel.add(logoutButton);
 
-        // Deposit logic
-        depositButton.addActionListener(e -> {
-            String amountStr = JOptionPane.showInputDialog("Enter deposit amount:");
-            double amount = Double.parseDouble(amountStr);
-            currentAccount.deposit(amount);
-            JOptionPane.showMessageDialog(frame, "Deposit successful.");
-        });
+        // Transaction Panel Components
+        JTextField targetAccountField = new JTextField();
+        JTextField amountField = new JTextField();
+        JButton transactionSubmitButton = new JButton("Submit");
+        JButton backToAccountButton = new JButton("Back to Account");
 
-        // Withdraw logic
-        withdrawButton.addActionListener(e -> {
-            String amountStr = JOptionPane.showInputDialog("Enter withdrawal amount:");
-            double amount = Double.parseDouble(amountStr);
-            if (currentAccount.withdraw(amount)) {
-                JOptionPane.showMessageDialog(frame, "Withdrawal successful.");
-            } else {
-                JOptionPane.showMessageDialog(frame, "Insufficient balance.");
+        transactionPanel.add(new JLabel("Target Account ID (for transfers):"));
+        transactionPanel.add(targetAccountField);
+        transactionPanel.add(new JLabel("Amount:"));
+        transactionPanel.add(amountField);
+        transactionPanel.add(transactionSubmitButton);
+        transactionPanel.add(backToAccountButton);
+
+        // Add panels to frame
+        frame.add(mainMenuPanel, "MainMenu");
+        frame.add(signUpPanel, "SignUp");
+        frame.add(loginPanel, "Login");
+        frame.add(accountPanel, "Account");
+        frame.add(transactionPanel, "Transaction");
+
+        // Button Actions
+        signUpButton.addActionListener(e -> cardLayout.show(frame.getContentPane(), "SignUp"));
+
+        loginButton.addActionListener(e -> cardLayout.show(frame.getContentPane(), "Login"));
+
+        exitButton.addActionListener(e -> System.exit(0));
+
+        backToMainMenuButton1.addActionListener(e -> cardLayout.show(frame.getContentPane(), "MainMenu"));
+
+        backToMainMenuButton2.addActionListener(e -> cardLayout.show(frame.getContentPane(), "MainMenu"));
+
+        backToAccountButton.addActionListener(e -> cardLayout.show(frame.getContentPane(), "Account"));
+
+        createAccountButton.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            String pin = new String(pinField.getPassword()).trim();
+            String accountType = (String) accountTypeBox.getSelectedItem();
+            String depositInput = depositField.getText().trim();
+        
+            if (name.isEmpty() || !name.matches("[a-zA-Z ]+")) {
+                JOptionPane.showMessageDialog(frame, "Invalid name. Please enter alphabetic characters only.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
             }
+        
+            if (!pin.matches("\\d{4}")) {
+                JOptionPane.showMessageDialog(frame, "Invalid PIN. Must be exactly 4 digits.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
+            double deposit;
+            try {
+                deposit = Double.parseDouble(depositInput);
+                if (deposit < 100) {
+                    throw new NumberFormatException();
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(frame, "Invalid deposit amount. Must be at least ₱100.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        
+            Customer customer = new Customer(name, pin);
+            Account account;
+            if ("Savings Account".equals(accountType)) {
+                account = new SavingsAccount(customer, deposit);
+            } else {
+                account = new CheckingAccount(customer, deposit);
+            }
+            accounts.add(account);
+        
+            // Copy the ID to clipboard
+            String accountId = customer.getId();
+            Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(accountId), null);
+        
+            JOptionPane.showMessageDialog(frame, "Account created successfully!\nYour ID: " + accountId + "\n(ID copied to clipboard)", "Success", JOptionPane.INFORMATION_MESSAGE);
+            
+            // Clear the text fields
+            nameField.setText("");
+            pinField.setText("");
+            depositField.setText("");
+            accountTypeBox.setSelectedIndex(0);  // Resets the combo box to the default option (Savings Account)
+        
+            cardLayout.show(frame.getContentPane(), "MainMenu");
         });
+        
+        
 
-        // Transfer logic
-        transferButton.addActionListener(e -> {
-            String amountStr = JOptionPane.showInputDialog("Enter transfer amount:");
-            double amount = Double.parseDouble(amountStr);
-            String recipientId = JOptionPane.showInputDialog("Enter recipient ID:");
-            Account targetAccount = null;
+        loginSubmitButton.addActionListener(e -> {
+            String id = idField.getText().trim();
+            String pin = new String(loginPinField.getPassword()).trim();
+
             for (Account account : accounts) {
-                if (account.getCustomer().getId().equals(recipientId)) {
-                    targetAccount = account;
-                    break;
+                if (account.getCustomer().getId().equals(id) && account.getCustomer().getPin().equals(pin)) {
+                    currentAccount = account;
+                    JOptionPane.showMessageDialog(frame, "Welcome " + currentAccount.getCustomer().getName() + "!");
+                    cardLayout.show(frame.getContentPane(), "Account");
+                    return;
                 }
             }
-            if (targetAccount != null && currentAccount.transfer(amount, targetAccount)) {
-                JOptionPane.showMessageDialog(frame, "Transfer successful.");
-            } else {
-                JOptionPane.showMessageDialog(frame, "Transfer failed.");
-            }
+            JOptionPane.showMessageDialog(frame, "Invalid ID or PIN.", "Error", JOptionPane.ERROR_MESSAGE);
         });
 
-        // View transaction history
-        viewTransactionHistoryButton.addActionListener(e -> {
-            StringBuilder history = new StringBuilder("Transaction History:\n");
-            for (String transaction : currentAccount.getTransactionHistory()) {
-                history.append(transaction).append("\n");
-            }
-            JOptionPane.showMessageDialog(frame, history.toString());
-        });
-
-        // Log out logic
         logoutButton.addActionListener(e -> {
             currentAccount = null;
-            JOptionPane.showMessageDialog(frame, "Logged out successfully.");
-            cardLayout.show(frame.getContentPane(), "mainMenuPanel");
+            cardLayout.show(frame.getContentPane(), "MainMenu");
         });
 
-        // Setup initial display
+        depositButton.addActionListener(e -> {
+            String amountInput = JOptionPane.showInputDialog(frame, "Enter amount to deposit:", "Deposit", JOptionPane.PLAIN_MESSAGE);
+            if (amountInput != null) {
+                try {
+                    double amount = Double.parseDouble(amountInput);
+                    if (amount < 100) {
+                        JOptionPane.showMessageDialog(frame, "The minimum deposit is ₱100. Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    if (amount > 0) {
+                        currentAccount.deposit(amount);
+                        JOptionPane.showMessageDialog(frame, "Deposited ₱" + amount + " successfully!", "Deposit", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Amount must be positive.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(frame, "Invalid amount. Please enter a numeric value.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        
+
+        withdrawButton.addActionListener(e -> {
+            String amountInput = JOptionPane.showInputDialog(frame, "Enter amount to withdraw:", "Withdraw", JOptionPane.PLAIN_MESSAGE);
+            if (amountInput != null) {
+                try {
+                    double amount = Double.parseDouble(amountInput);
+        
+                    // Check if the amount is within the specified range
+                    if (amount < 100) {
+                        JOptionPane.showMessageDialog(frame, "The minimum withdrawal is ₱100. Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    if (amount > 10000) {
+                        JOptionPane.showMessageDialog(frame, "The maximum withdrawal is ₱10,000. Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+        
+                    // Check if there are sufficient funds for the withdrawal
+                    if (amount > 0 && currentAccount.withdraw(amount)) {
+                        JOptionPane.showMessageDialog(frame, "Withdrew ₱" + amount + " successfully!", "Withdraw", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Insufficient funds or invalid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(frame, "Invalid amount. Please enter a numeric value.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        
+        transferButton.addActionListener(e -> {
+            transactionSubmitButton.setText("Transfer");
+            targetAccountField.setEnabled(true);
+            cardLayout.show(frame.getContentPane(), "Transaction");
+        });
+        
+        transactionSubmitButton.addActionListener(e -> {
+            String buttonText = transactionSubmitButton.getText();
+            String targetAccountId = targetAccountField.getText().trim();
+            String amountInput = amountField.getText().trim();
+        
+            if (buttonText.equals("Transfer")) {
+                try {
+                    double amount = Double.parseDouble(amountInput);
+        
+                    // Check if the amount is within the specified range for transfers
+                    if (amount < 100) {
+                        JOptionPane.showMessageDialog(frame, "The minimum transfer amount is ₱100. Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    if (amount > 100000) {
+                        JOptionPane.showMessageDialog(frame, "The maximum transfer amount is ₱100,000. Please enter a valid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+        
+                    // Find the target account by ID
+                    Account targetAccount = null;
+                    for (Account account : accounts) {
+                        if (account.getCustomer().getId().equals(targetAccountId)) {
+                            targetAccount = account;
+                            break;
+                        }
+                    }
+        
+                    if (targetAccount == null) {
+                        JOptionPane.showMessageDialog(frame, "Target account not found.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+        
+                    // Check if the transfer is successful
+                    if (currentAccount.transfer(amount, targetAccount)) {
+                        JOptionPane.showMessageDialog(frame, "Transferred ₱" + amount + " to Account ID: " + targetAccountId, "Transfer Successful", JOptionPane.INFORMATION_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(frame, "Insufficient funds or invalid amount.", "Error", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(frame, "Invalid amount. Please enter a numeric value.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        
+            // Reset fields and return to Account panel
+            targetAccountField.setText("");
+            amountField.setText("");
+            cardLayout.show(frame.getContentPane(), "Account");
+        });
+        
+        
+        viewInfoButton.addActionListener(e -> {
+            if (currentAccount != null) {
+                double monthlyInterest = currentAccount.calculateMonthlyInterest();
+                String info = "Account Type: " + currentAccount.getAccountType() +
+                              "\nBalance: ₱" + currentAccount.getBalance() +
+                              "\nName: " + currentAccount.getCustomer().getName() +
+                              "\nID: " + currentAccount.getCustomer().getId() +
+                              "\nInterest Rate: " + currentAccount.getInterestRate() + "%" +
+                              "\nInterest for Next Month: ₱" + String.format("%.2f", monthlyInterest);
+                JOptionPane.showMessageDialog(frame, info, "Account Info", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+        
+        viewHistoryButton.addActionListener(e -> {
+            if (currentAccount != null) {
+                StringBuilder history = new StringBuilder("Transaction History:\n");
+                for (String transaction : currentAccount.getTransactionHistory()) {
+                    history.append(transaction).append("\n");
+                }
+                JOptionPane.showMessageDialog(frame, history.toString(), "Transaction History", JOptionPane.INFORMATION_MESSAGE);
+            }
+        });
+
+        // Final frame setup
         frame.setVisible(true);
-        cardLayout.show(frame.getContentPane(), "mainMenuPanel");
     }
 }
